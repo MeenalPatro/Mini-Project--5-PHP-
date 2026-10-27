@@ -1,0 +1,14 @@
+<?php
+require __DIR__.'/config/app.php';
+if(user()) go(user()['role']==='admin'?'admin/dashboard.php':'student/dashboard.php');
+$error='';
+if($_SERVER['REQUEST_METHOD']==='POST'){
+    csrf_check();$name=trim((string)($_POST['name']??''));$email=strtolower(trim((string)($_POST['email']??'')));$password=(string)($_POST['password']??'');$confirm=(string)($_POST['confirm_password']??'');$length=preg_match_all('/./us',$name);
+    if($name===''||$length===false||$length>120)$error='Enter your name (up to 120 characters).';
+    elseif(!filter_var($email,FILTER_VALIDATE_EMAIL)||!preg_match('/@marwadiuniversity\.ac\.in$/i',$email))$error='Registration is only available with an @marwadiuniversity.ac.in email.';
+    elseif(strlen($password)<8)$error='Password must be at least 8 characters.';
+    elseif($password!==$confirm)$error='Passwords do not match.';
+    else{try{$pdo=db();$pdo->beginTransaction();$q=$pdo->prepare("INSERT INTO users(name,email,password_hash,role,is_active) VALUES(?,?,?,'student',1)");$q->execute([$name,$email,password_hash($password,PASSWORD_DEFAULT)]);$id=(int)$pdo->lastInsertId();$pdo->prepare('INSERT INTO student_profiles(user_id) VALUES(?)')->execute([$id]);$pdo->prepare('INSERT INTO user_settings(user_id) VALUES(?)')->execute([$id]);$pdo->commit();flash('Your student account is ready. Sign in to continue.');go('login.php');}catch(Throwable $e){if(isset($pdo)&&$pdo->inTransaction())$pdo->rollBack();$error='This email may already be registered. Please sign in or use another university email.';}}
+}
+$pageTitle='Create student account';$bodyClass='auth-page-shell register-page';$hideSiteNav=true;require __DIR__.'/includes/header.php';
+?><main class="auth-page"><form class="auth-card register-card" method="post" autocomplete="on"><img class="auth-logo" src="<?=url('assets/images/marwadi-chandarana-group.png')?>" alt="Marwadi University"><h1>Join EventHub</h1><p>Create your Marwadi University student account.</p><?php if($error):?><div class="inline-error"><?=e($error)?></div><?php endif;?><input type="hidden" name="_csrf" value="<?=csrf()?>"><label>Full name<input name="name" maxlength="120" autocomplete="name" required value="<?=e($_POST['name']??'')?>"></label><label>University email<input type="email" name="email" autocomplete="email" required pattern=".+@marwadiuniversity\.ac\.in" placeholder="name@marwadiuniversity.ac.in" value="<?=e($_POST['email']??'')?>"></label><label>Password<input type="password" name="password" minlength="8" autocomplete="new-password" required></label><label>Confirm password<input type="password" name="confirm_password" minlength="8" autocomplete="new-password" required></label><button class="btn primary full">Create student account</button><small>Only @marwadiuniversity.ac.in student email addresses can register.</small><p class="auth-switch">Already registered? <a href="<?=url('login.php')?>">Sign in</a></p></form></main><?php require __DIR__.'/includes/footer.php';
