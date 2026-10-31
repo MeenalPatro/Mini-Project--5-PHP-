@@ -1,0 +1,11 @@
+<?php
+require __DIR__.'/../config/app.php';$me=require_role('admin');
+try{db()->prepare('INSERT INTO user_settings(user_id) VALUES(?) ON DUPLICATE KEY UPDATE user_id=VALUES(user_id)')->execute([$me['id']]);}catch(Throwable $t){}
+if($_SERVER['REQUEST_METHOD']==='POST'){
+    csrf_check();$inApp=(int)isset($_POST['in_app_notifications']);
+    try{db()->prepare('UPDATE user_settings SET in_app_notifications=? WHERE user_id=?')->execute([$inApp,$me['id']]);flash('Notification settings saved.');go('admin/settings.php');}
+    catch(Throwable $t){flash('Could not save settings.','error');go('admin/settings.php');}
+}
+$inApp=1;try{$q=db()->prepare('SELECT in_app_notifications FROM user_settings WHERE user_id=?');$q->execute([$me['id']]);$value=$q->fetchColumn();if($value!==false)$inApp=(int)$value;}catch(Throwable $t){}
+$pageTitle='General Settings';$bodyClass='dashboard-page admin-page';$activePage='settings';$adminSection='settings';require __DIR__.'/../includes/header.php';
+?><div class="dash-layout admin-layout"><?php require __DIR__.'/../includes/sidebar.php';?><main class="content-page admin-content admin-events-page"><header class="admin-page-heading"><div><span class="admin-eyebrow">PREFERENCES</span><h1>General Settings</h1><p>Manage how EventHub sends updates to your admin account.</p></div></header><?php require __DIR__.'/section-nav.php';?><section class="admin-work-card"><div class="admin-card-heading"><span class="admin-heading-icon"><?=eventhub_icon('bell')?></span><div><h2>Notification preferences</h2><p>Choose whether new updates appear in your notification center.</p></div></div><form method="post" class="form-card admin-event-form"><input type="hidden" name="_csrf" value="<?=csrf()?>"><label class="settings-option"><span><strong>In-app notifications</strong><small>Show new updates in the EventHub notification center.</small></span><input type="checkbox" name="in_app_notifications" value="1" <?=$inApp?'checked':''?>></label><div class="admin-form-actions"><a class="btn outline" href="<?=url('profile.php')?>">Edit My Profile</a><button class="btn primary" type="submit">Save Settings</button></div></form></section></main></div><?php require __DIR__.'/../includes/footer.php';
